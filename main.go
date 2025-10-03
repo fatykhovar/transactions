@@ -11,6 +11,12 @@ type User struct {
 	Balance float64
 }
 
+type Transaction struct{
+	FromID string
+	ToID string
+	Amount float64
+}
+
 func (u *User) Deposit(sum float64) {
 	u.Balance += sum
 }
