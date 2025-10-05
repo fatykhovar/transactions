@@ -20,8 +20,8 @@ type Transaction struct {
 }
 
 type PaymentSystem struct {
-	Users        map[string]*User
-	Transactions []*Transaction
+	Users            map[string]*User
+	TransactionQueue []*Transaction
 }
 
 func (u *User) String() string {
@@ -45,31 +45,31 @@ func (ps *PaymentSystem) AddUser(user *User) {
 }
 
 func (ps *PaymentSystem) AddTransaction(transaction *Transaction) {
-	ps.Transactions = append(ps.Transactions, transaction)
+	ps.TransactionQueue = append(ps.TransactionQueue, transaction)
 }
 
 func (ps *PaymentSystem) ProcessingTransactions() error {
-	if len(ps.Transactions) == 0 {
+	if len(ps.TransactionQueue) == 0 {
 		return errors.New("no transactions")
 	}
-	fromID, ok := ps.Users[ps.Transactions[0].FromID]
+	fromID, ok := ps.Users[ps.TransactionQueue[0].FromID]
 	if !ok {
 		return errors.New("user FromID not found")
 	}
-	toID, ok := ps.Users[ps.Transactions[0].ToID]
+	toID, ok := ps.Users[ps.TransactionQueue[0].ToID]
 	if !ok {
 		return errors.New("user ToID not found")
 	}
 
-	if err := fromID.Withdraw(ps.Transactions[0].Amount); err != nil {
-		return fmt.Errorf("transaction %v: %w", ps.Transactions[0], err)
+	if err := fromID.Withdraw(ps.TransactionQueue[0].Amount); err != nil {
+		return fmt.Errorf("transaction %v: %w", ps.TransactionQueue[0], err)
 	}
-	fmt.Printf("After withdraw: %.2f, from: %v\n", ps.Transactions[0].Amount, fromID)
+	fmt.Printf("After withdraw: %.2f, from: %v\n", ps.TransactionQueue[0].Amount, fromID)
 
-	toID.Deposit(ps.Transactions[0].Amount)
-	fmt.Printf("After deposit: %.2f, to: %v\n", ps.Transactions[0].Amount, toID)
+	toID.Deposit(ps.TransactionQueue[0].Amount)
+	fmt.Printf("After deposit: %.2f, to: %v\n", ps.TransactionQueue[0].Amount, toID)
 
-	ps.Transactions = ps.Transactions[1:]
+	ps.TransactionQueue = ps.TransactionQueue[1:]
 	return nil
 }
 
@@ -80,7 +80,7 @@ func main() {
 	fmt.Println("new user2:", user2)
 	fmt.Println()
 
-	paymentSystem := PaymentSystem{Users: make(map[string]*User), Transactions: make([]*Transaction, 0)}
+	paymentSystem := PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]*Transaction, 0)}
 
 	paymentSystem.AddUser(user1)
 	paymentSystem.AddUser(user2)
@@ -91,7 +91,7 @@ func main() {
 	paymentSystem.AddTransaction(transaction1)
 	paymentSystem.AddTransaction(transaction2)
 
-	for len(paymentSystem.Transactions) > 0 {
+	for len(paymentSystem.TransactionQueue) > 0 {
 		if err := paymentSystem.ProcessingTransactions(); err != nil {
 			fmt.Println(err)
 			break
