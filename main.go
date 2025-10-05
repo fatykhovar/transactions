@@ -3,12 +3,18 @@ package main
 import (
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type User struct {
 	ID      string
 	Name    string
 	Balance float64
+}
+
+func (u *User) String() string {
+	return fmt.Sprintf("Name: %s, Amount: %.2f", u.Name, u.Balance)
 }
 
 func (u *User) Deposit(sum float64) {
@@ -24,8 +30,8 @@ func (u *User) Withdraw(sum float64) error {
 }
 
 func main() {
-	user1 := User{ID: "123", Name: "John", Balance: 368.9}
-	user2 := User{ID: "456", Name: "Linda", Balance: 698}
+	user1 := &User{ID: uuid.NewString(), Name: "John", Balance: 400}
+	user2 := &User{ID: uuid.NewString(), Name: "Linda", Balance: 600}
 
 	user1.Deposit(80)
 	fmt.Println("user1 after deposit 80:", user1)
