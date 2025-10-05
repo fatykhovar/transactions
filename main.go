@@ -73,6 +73,10 @@ func (ps *PaymentSystem) ProcessingTransactions() error {
 	return nil
 }
 
+func Worker() {
+
+}
+
 func main() {
 	user1 := &User{ID: uuid.NewString(), Name: "John", Balance: 1000}
 	user2 := &User{ID: uuid.NewString(), Name: "Linda", Balance: 500}
@@ -80,19 +84,19 @@ func main() {
 	fmt.Println("new user2:", user2)
 	fmt.Println()
 
-	paymentSystem := PaymentSystem{Users: make(map[string]*User), Transactions: make([]*Transaction, 0)}
+	ps := PaymentSystem{Users: make(map[string]*User), Transactions: make([]*Transaction, 0)}
 
-	paymentSystem.AddUser(user1)
-	paymentSystem.AddUser(user2)
+	ps.AddUser(user1)
+	ps.AddUser(user2)
 
 	transaction1 := &Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 200}
 	transaction2 := &Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 50}
 
-	paymentSystem.AddTransaction(transaction1)
-	paymentSystem.AddTransaction(transaction2)
+	ps.AddTransaction(transaction1)
+	ps.AddTransaction(transaction2)
 
-	for len(paymentSystem.Transactions) > 0 {
-		if err := paymentSystem.ProcessingTransactions(); err != nil {
+	for len(ps.Transactions) > 0 {
+		if err := ps.ProcessingTransactions(); err != nil {
 			fmt.Println(err)
 			break
 		}
