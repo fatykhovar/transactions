@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type User struct {
@@ -11,10 +13,19 @@ type User struct {
 	Balance float64
 }
 
-type Transaction struct{
+type Transaction struct {
 	FromID string
-	ToID string
+	ToID   string
 	Amount float64
+}
+
+type PaymentSystem struct {
+	Users        map[string]*User
+	Transactions []*Transaction
+}
+
+func (u *User) String() string {
+	return fmt.Sprintf("Name: %s, Amount: %.2f", u.Name, u.Balance)
 }
 
 func (u *User) Deposit(sum float64) {
@@ -29,21 +40,64 @@ func (u *User) Withdraw(sum float64) error {
 	return nil
 }
 
+func (ps *PaymentSystem) AddUser(user *User) {
+	ps.Users[user.ID] = user
+}
+
+func (ps *PaymentSystem) AddTransaction(transaction *Transaction) {
+	ps.Transactions = append(ps.Transactions, transaction)
+}
+
+func (ps *PaymentSystem) ProcessingTransactions() error {
+	if len(ps.Transactions) == 0 {
+		return errors.New("no transactions")
+	}
+	fromID, ok := ps.Users[ps.Transactions[0].FromID]
+	if !ok {
+		return errors.New("user FromID not found")
+	}
+	toID, ok := ps.Users[ps.Transactions[0].ToID]
+	if !ok {
+		return errors.New("user ToID not found")
+	}
+
+	if err := fromID.Withdraw(ps.Transactions[0].Amount); err != nil {
+		return fmt.Errorf("transaction %v: %w", ps.Transactions[0], err)
+	}
+	fmt.Printf("After withdraw: %.2f, from: %v\n", ps.Transactions[0].Amount, fromID)
+
+	toID.Deposit(ps.Transactions[0].Amount)
+	fmt.Printf("After deposit: %.2f, to: %v\n", ps.Transactions[0].Amount, toID)
+
+	ps.Transactions = ps.Transactions[1:]
+	return nil
+}
+
 func main() {
-	user1 := User{ID: "123", Name: "John", Balance: 368.9}
-	user2 := User{ID: "456", Name: "Linda", Balance: 698}
+	user1 := &User{ID: uuid.NewString(), Name: "John", Balance: 1000}
+	user2 := &User{ID: uuid.NewString(), Name: "Linda", Balance: 500}
+	fmt.Println("new user1:", user1)
+	fmt.Println("new user2:", user2)
+	fmt.Println()
 
-	user1.Deposit(80)
-	fmt.Println("user1 after deposit 80:", user1)
+	paymentSystem := PaymentSystem{Users: make(map[string]*User), Transactions: make([]*Transaction, 0)}
 
-	if err := user2.Withdraw(80); err != nil {
-		fmt.Println("withdraw error:", err)
+	paymentSystem.AddUser(user1)
+	paymentSystem.AddUser(user2)
+
+	transaction1 := &Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 200}
+	transaction2 := &Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 50}
+
+	paymentSystem.AddTransaction(transaction1)
+	paymentSystem.AddTransaction(transaction2)
+
+	for len(paymentSystem.Transactions) > 0 {
+		if err := paymentSystem.ProcessingTransactions(); err != nil {
+			fmt.Println(err)
+			break
+		}
 	}
-	fmt.Println("user2 after withdraw 80:", user2)
-
-	if err := user1.Withdraw(500); err != nil {
-		fmt.Println("withdraw error:", err)
-	}
-	fmt.Println("user1 after withdraw 500:", user1)
-
+	fmt.Println("\nTotal:")
+	fmt.Println("user1:", user1)
+	fmt.Println("user2:", user2)
 }
