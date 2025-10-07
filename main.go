@@ -21,7 +21,7 @@ type Transaction struct {
 
 type PaymentSystem struct {
 	Users            map[string]*User
-	TransactionQueue []*Transaction
+	TransactionQueue []Transaction
 }
 
 func (u *User) String() string {
@@ -44,32 +44,28 @@ func (ps *PaymentSystem) AddUser(user *User) {
 	ps.Users[user.ID] = user
 }
 
-func (ps *PaymentSystem) AddTransaction(transaction *Transaction) {
-	ps.TransactionQueue = append(ps.TransactionQueue, transaction)
+func (ps *PaymentSystem) AddTransaction(t Transaction) {
+	ps.TransactionQueue = append(ps.TransactionQueue, t)
 }
 
-func (ps *PaymentSystem) ProcessingTransactions() error {
-	if len(ps.TransactionQueue) == 0 {
-		return errors.New("no transactions")
-	}
-	fromID, ok := ps.Users[ps.TransactionQueue[0].FromID]
+func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
+	fromID, ok := ps.Users[t.FromID]
 	if !ok {
 		return errors.New("user FromID not found")
 	}
-	toID, ok := ps.Users[ps.TransactionQueue[0].ToID]
+	toID, ok := ps.Users[t.ToID]
 	if !ok {
 		return errors.New("user ToID not found")
 	}
 
-	if err := fromID.Withdraw(ps.TransactionQueue[0].Amount); err != nil {
-		return fmt.Errorf("transaction %v: %w", ps.TransactionQueue[0], err)
+	if err := fromID.Withdraw(t.Amount); err != nil {
+		return fmt.Errorf("transaction %v: %w", t, err)
 	}
-	fmt.Printf("After withdraw: %.2f, from: %v\n", ps.TransactionQueue[0].Amount, fromID)
+	fmt.Printf("After withdraw: %.2f, from: %v\n", t.Amount, fromID)
 
-	toID.Deposit(ps.TransactionQueue[0].Amount)
-	fmt.Printf("After deposit: %.2f, to: %v\n", ps.TransactionQueue[0].Amount, toID)
+	toID.Deposit(t.Amount)
+	fmt.Printf("After deposit: %.2f, to: %v\n", t.Amount, toID)
 
-	ps.TransactionQueue = ps.TransactionQueue[1:]
 	return nil
 }
 
@@ -80,19 +76,19 @@ func main() {
 	fmt.Println("new user2:", user2)
 	fmt.Println()
 
-	paymentSystem := PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]*Transaction, 0)}
+	paymentSystem := PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]Transaction, 0)}
 
 	paymentSystem.AddUser(user1)
 	paymentSystem.AddUser(user2)
 
-	transaction1 := &Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 200}
-	transaction2 := &Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 50}
+	transaction1 := Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 200}
+	transaction2 := Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 50}
 
 	paymentSystem.AddTransaction(transaction1)
 	paymentSystem.AddTransaction(transaction2)
 
-	for len(paymentSystem.TransactionQueue) > 0 {
-		if err := paymentSystem.ProcessingTransactions(); err != nil {
+	for _, t := range paymentSystem.TransactionQueue {
+		if err := paymentSystem.ProcessingTransactions(t); err != nil {
 			fmt.Println(err)
 			break
 		}
