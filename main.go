@@ -22,7 +22,7 @@ type Transaction struct {
 
 type PaymentSystem struct {
 	Users            map[string]*User
-	TransactionQueue []*Transaction
+	TransactionQueue []Transaction
 }
 
 func (u *User) String() string {
@@ -45,39 +45,11 @@ func (ps *PaymentSystem) AddUser(user *User) {
 	ps.Users[user.ID] = user
 }
 
-func (ps *PaymentSystem) AddTransaction(transaction *Transaction) {
+func (ps *PaymentSystem) AddTransaction(transaction Transaction) {
 	ps.TransactionQueue = append(ps.TransactionQueue, transaction)
 }
 
-// func (ps *PaymentSystem) ProcessingTransactions() error {
-// 	if len(ps.TransactionQueue) == 0 {
-// 		return errors.New("no transactions")
-// 	}
-// 	fromID, ok := ps.Users[t.FromID]
-// 	if !ok {
-// 		return errors.New("user FromID not found")
-// 	}
-// 	toID, ok := ps.Users[t.ToID]
-// 	if !ok {
-// 		return errors.New("user ToID not found")
-// 	}
-
-// 	if err := fromID.Withdraw(t.Amount); err != nil {
-// 		return fmt.Errorf("transaction %v: %w", t, err)
-// 	}
-// 	fmt.Printf("After withdraw: %.2f, from: %v\n", t.Amount, fromID)
-
-// 	toID.Deposit(t.Amount)
-// 	fmt.Printf("After deposit: %.2f, to: %v\n", t.Amount, toID)
-
-// 	ps.TransactionQueue = ps.TransactionQueue[1:]
-// 	return nil
-// }
-
 func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
-	if len(ps.TransactionQueue) == 0 {
-		return errors.New("no transactions")
-	}
 	fromID, ok := ps.Users[t.FromID]
 	if !ok {
 		return errors.New("user FromID not found")
@@ -95,7 +67,6 @@ func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
 	toID.Deposit(t.Amount)
 	fmt.Printf("After deposit: %.2f, to: %v\n", t.Amount, toID)
 
-	ps.TransactionQueue = ps.TransactionQueue[1:]
 	return nil
 }
 
@@ -104,8 +75,8 @@ func (ps *PaymentSystem) Worker(ch chan Transaction, wg *sync.WaitGroup) error {
 		if err := ps.ProcessingTransactions(t); err != nil {
 			return err
 		}
-		defer wg.Done()
 	}
+	defer wg.Done()
 	return nil
 }
 
@@ -116,34 +87,31 @@ func main() {
 	fmt.Println("new user2:", user2)
 	fmt.Println()
 
-	ps := PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]*Transaction, 0)}
+	paymentSystem := PaymentSystem{Users: make(map[string]*User), TransactionQueue: make([]Transaction, 0)}
 
-	ps.AddUser(user1)
-	ps.AddUser(user2)
+	paymentSystem.AddUser(user1)
+	paymentSystem.AddUser(user2)
 
-	transaction1 := &Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 200}
-	transaction2 := &Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 50}
+	paymentSystem.AddTransaction(Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 200})
+	paymentSystem.AddTransaction(Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 50})
+	paymentSystem.AddTransaction(Transaction{FromID: user2.ID, ToID: user1.ID, Amount: 100})
+	paymentSystem.AddTransaction(Transaction{FromID: user1.ID, ToID: user2.ID, Amount: 140})
 
-	ps.AddTransaction(transaction1)
-	ps.AddTransaction(transaction2)
-
-	ch := make(chan Transaction, len(ps.TransactionQueue))
+	ch := make(chan Transaction, len(paymentSystem.TransactionQueue))
 	var wg sync.WaitGroup
 
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
-		go ps.Worker(ch, &wg)
+		go paymentSystem.Worker(ch, &wg)
 	}
 
-	for _, t := range ps.TransactionQueue {
+	for _, t := range paymentSystem.TransactionQueue {
 		ch <- t
 	}
-	// for len(ps.TransactionQueue) > 0 {
-	// 	if err := ps.ProcessingTransactions(); err != nil {
-	// 		fmt.Println(err)
-	// 		break
-	// 	}
-	// }
+
+	close(ch)
+	wg.Wait()
+
 	fmt.Println("\nTotal:")
 	fmt.Println("user1:", user1)
 	fmt.Println("user2:", user2)
